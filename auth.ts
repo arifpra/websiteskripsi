@@ -2,25 +2,35 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
-import prisma from "@/lib/prisma"; // ✅ pastikan default export prisma (bukan { prisma })
+import prisma from "@/lib/prisma";
 
 type Role = "ADMIN" | "OWNER" | "CUSTOMER";
 
+const DISABLE_DB = process.env.DISABLE_DB === "1" || process.env.DISABLE_DB === "true";
+
+function envUser(role: "ADMIN" | "OWNER") {
+  const username = process.env[`${role}_USERNAME`];
+  const password = process.env[`${role}_PASSWORD`];
+  if (!username || !password) return null;
+  return { username, password, role };
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
-
   pages: { signIn: "/signin" },
+
+  // aman kalau kamu akses via domain Vercel / proxy
+  trustHost: true,
 
   providers: [
     Credentials({
       name: "Credentials",
       credentials: {
         username: { label: "Username", type: "text" },
-        password: { label: "Password", type: "password" },
+        password: { label: "Password", type: "password" }
       },
 
       async authorize(credentials) {
-        // ✅ NORMALIZE supaya TS yakin string (fix error {} is not assignable to string)
         const username =
           typeof credentials?.username === "string" ? credentials.username.trim() : "";
         const password =
@@ -30,15 +40,44 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           throw new Error("Username dan password wajib diisi");
         }
 
+        // ✅ MODE TANPA DB: login via ENV (ADMIN / OWNER)
+        if (DISABLE_DB) {
+          const admin = envUser("ADMIN");
+          if (admin && username === admin.username && password === admin.password) {
+            return {
+              id: "env-admin",
+              name: "Admin",
+              email: "admin@local",
+              username: admin.username,
+              role: "ADMIN" as Role
+            };
+          }
+
+          const owner = envUser("OWNER");
+          if (owner && username === owner.username && password === owner.password) {
+            return {
+              id: "env-owner",
+              name: "Owner",
+              email: "owner@local",
+              username: owner.username,
+              role: "OWNER" as Role
+            };
+          }
+
+          throw new Error("Username atau password salah");
+        }
+
+        // ✅ MODE NORMAL: pakai DB Prisma
         const user = await prisma.user.findUnique({
-          where: { username }, // ✅ sekarang pasti string
+          where: { username }
         });
 
         if (!user) {
           throw new Error("Username atau password salah");
         }
 
-        const isValid = await bcrypt.compare(password, user.password); // ✅ password pasti string
+        // kalau di DB password sudah hash
+        const isValid = await bcrypt.compare(password, user.password);
         if (!isValid) {
           throw new Error("Username atau password salah");
         }
@@ -50,10 +89,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: user.name ?? user.username,
           email: user.email,
           username: user.username,
-          role,
+          role
         };
-      },
-    }),
+      }
+    })
   ],
 
   callbacks: {
@@ -73,6 +112,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         (session.user as any).role = token.role as Role;
       }
       return session;
-    },
-  },
+    }
+  }
 });

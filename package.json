@@ -11,7 +11,7 @@
     "prisma:push": "prisma db push",
     "prisma:seed": "prisma db seed",
 
-    "start": "npm run prisma:generate && npm run prisma:push && next start",
+    "start": "node scripts/start.mjs",
 
     "postinstall": "prisma generate"
   },
