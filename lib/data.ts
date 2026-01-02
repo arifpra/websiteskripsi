@@ -49,3 +49,32 @@ export const getprodukDetailById = async (id: string) => {
     return null;
   }
 };
+
+export const getReservationById = async (id: string) => {
+  try {
+    if (!process.env.DATABASE_URL) return null; // fallback tanpa DB
+    return await prisma.reservation.findUnique({
+      where: { id },
+      include: {
+        produk: {
+          select: {
+            name: true,
+            image: true,
+            price: true,
+          },
+        },
+        user: {
+          select: {
+            name: true,
+            email: true,
+            phone: true,
+          },
+        },
+        payment: true,
+      },
+    });
+  } catch (error) {
+    console.error("Error getReservationById:", error);
+    return null;
+  }
+};
