@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { resolveImageSrc } from "@/lib/utils";
 
 type ProdukItem = {
   id: string;
@@ -116,9 +117,7 @@ export default function AdminOverviewPage() {
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               {produks.map((produk) => {
-                const imageSrc = produk.image.startsWith("/")
-                  ? produk.image
-                  : `/${produk.image}`;
+                const imageSrc = resolveImageSrc(produk.image);
 
                 return (
                   <Link

@@ -1,8 +1,8 @@
 // app/api/admin/produks/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
+import { del, put } from "@vercel/blob";
 
 export const runtime = "nodejs";
 
@@ -49,6 +49,15 @@ export async function GET(req: NextRequest) {
 // ========== PATCH / UPDATE ==========
 export async function PATCH(req: NextRequest) {
   try {
+    const session = await auth();
+    const role = (session?.user as any)?.role;
+    if (!session || (role !== "ADMIN" && role !== "OWNER")) {
+      return NextResponse.json(
+        { message: "Tidak memiliki akses" },
+        { status: 403 }
+      );
+    }
+
     const id = getIdFromRequest(req);
 
     if (!id) {
@@ -87,20 +96,21 @@ export async function PATCH(req: NextRequest) {
 
     // upload gambar baru (opsional)
     let imagePath: string | undefined;
+    let previousImage: string | null = null;
     if (file && file.size > 0) {
-      const bytes = await file.arrayBuffer();
-      const buffer = Buffer.from(bytes);
-
-      const uploadsDir = path.join(process.cwd(), "public", "uploads");
-      await mkdir(uploadsDir, { recursive: true });
-
       const safeName = file.name.replace(/\s+/g, "-").toLowerCase();
       const filename = `${Date.now()}-${safeName}`;
-      const fullPath = path.join(uploadsDir, filename);
+      const blob = await put(filename, file, {
+        access: "public",
+        multipart: true,
+      });
+      imagePath = blob.url;
 
-      await writeFile(fullPath, buffer);
-
-      imagePath = `/uploads/${filename}`;
+      const existing = await prisma.produk.findUnique({
+        where: { id },
+        select: { image: true },
+      });
+      previousImage = existing?.image ?? null;
     }
 
     const updated = await prisma.produk.update({
@@ -113,6 +123,16 @@ export async function PATCH(req: NextRequest) {
         ...(imagePath && { image: imagePath }),
       },
     });
+
+    if (
+      previousImage &&
+      previousImage.startsWith("http") &&
+      previousImage !== imagePath
+    ) {
+      await del(previousImage).catch((cleanupError) => {
+        console.error("DELETE old image error:", cleanupError);
+      });
+    }
 
     return NextResponse.json(updated, { status: 200 });
   } catch (error: any) {
@@ -127,6 +147,15 @@ export async function PATCH(req: NextRequest) {
 // ========== DELETE ==========
 export async function DELETE(req: NextRequest) {
   try {
+    const session = await auth();
+    const role = (session?.user as any)?.role;
+    if (!session || (role !== "ADMIN" && role !== "OWNER")) {
+      return NextResponse.json(
+        { message: "Tidak memiliki akses" },
+        { status: 403 }
+      );
+    }
+
     const id = getIdFromRequest(req);
 
     if (!id) {
@@ -136,9 +165,20 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
+    const existing = await prisma.produk.findUnique({
+      where: { id },
+      select: { image: true },
+    });
+
     await prisma.produk.delete({
       where: { id },
     });
+
+    if (existing?.image && existing.image.startsWith("http")) {
+      await del(existing.image).catch((cleanupError) => {
+        console.error("DELETE image error:", cleanupError);
+      });
+    }
 
     return NextResponse.json(
       { message: "Produk berhasil dihapus" },

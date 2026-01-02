@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { resolveImageSrc } from "@/lib/utils";
 
 type ProdukItem = {
   id: string;
@@ -71,7 +72,7 @@ export default function ProductDetailPage() {
         setProduk(found);
 
         const img = found.image;
-        setPreview(img.startsWith("/") ? img : `/${img}`);
+        setPreview(resolveImageSrc(img));
       } catch (err) {
         console.error(err);
         setError(
@@ -138,7 +139,7 @@ export default function ProductDetailPage() {
         const updated = data as ProdukItem;
         setProduk(updated);
         const img = updated.image;
-        setPreview(img.startsWith("/") ? img : `/${img}`);
+        setPreview(resolveImageSrc(img));
       }
 
       setSuccess("Perubahan berhasil disimpan.");
@@ -237,11 +238,7 @@ export default function ProductDetailPage() {
     );
   }
 
-  const imageSrc = preview
-    ? preview
-    : produk.image.startsWith("/")
-    ? produk.image
-    : `/${produk.image}`;
+  const imageSrc = resolveImageSrc(preview ?? produk.image);
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">

@@ -1,117 +1,96 @@
-// auth.ts
+import { PrismaAdapter } from "@auth/prisma-adapter";
+import bcrypt from "bcryptjs";
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import bcrypt from "bcryptjs";
-import prisma from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 
-type Role = "ADMIN" | "OWNER" | "CUSTOMER";
+type Role = "OWNER" | "ADMIN" | "CUSTOMER";
 
-const DISABLE_DB = process.env.DISABLE_DB === "1" || process.env.DISABLE_DB === "true";
-
-function envUser(role: "ADMIN" | "OWNER") {
-  const username = process.env[`${role}_USERNAME`];
-  const password = process.env[`${role}_PASSWORD`];
-  if (!username || !password) return null;
-  return { username, password, role };
+function parseEmails(v?: string) {
+  return (v ?? "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
 }
 
+function resolveRoleFromEmail(email?: string | null): Role | undefined {
+  const e = (email ?? "").toLowerCase();
+  if (!e) return undefined;
+
+  const owners = parseEmails(process.env.OWNER_EMAILS);
+  if (owners.includes(e)) return "OWNER";
+
+  const admins = parseEmails(process.env.ADMIN_EMAILS);
+  if (admins.includes(e)) return "ADMIN";
+
+  return undefined;
+}
+
+const hasDbUrl = !!process.env.DATABASE_URL;
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  adapter: hasDbUrl ? PrismaAdapter(prisma) : undefined,
   session: { strategy: "jwt" },
   pages: { signIn: "/signin" },
-
-  // aman kalau kamu akses via domain Vercel / proxy
-  trustHost: true,
-
+  secret: process.env.AUTH_SECRET,
   providers: [
     Credentials({
       name: "Credentials",
       credentials: {
-        username: { label: "Username", type: "text" },
-        password: { label: "Password", type: "password" }
+        username: { label: "Username or Email", type: "text" },
+        password: { label: "Password", type: "password" },
       },
-
       async authorize(credentials) {
-        const username =
-          typeof credentials?.username === "string" ? credentials.username.trim() : "";
-        const password =
-          typeof credentials?.password === "string" ? credentials.password : "";
+        if (!hasDbUrl) return null;
 
-        if (!username || !password) {
-          throw new Error("Username dan password wajib diisi");
-        }
+        const username = credentials?.username?.trim();
+        const password = credentials?.password ?? "";
 
-        // ✅ MODE TANPA DB: login via ENV (ADMIN / OWNER)
-        if (DISABLE_DB) {
-          const admin = envUser("ADMIN");
-          if (admin && username === admin.username && password === admin.password) {
-            return {
-              id: "env-admin",
-              name: "Admin",
-              email: "admin@local",
-              username: admin.username,
-              role: "ADMIN" as Role
-            };
-          }
+        if (!username || !password) return null;
 
-          const owner = envUser("OWNER");
-          if (owner && username === owner.username && password === owner.password) {
-            return {
-              id: "env-owner",
-              name: "Owner",
-              email: "owner@local",
-              username: owner.username,
-              role: "OWNER" as Role
-            };
-          }
-
-          throw new Error("Username atau password salah");
-        }
-
-        // ✅ MODE NORMAL: pakai DB Prisma
-        const user = await prisma.user.findUnique({
-          where: { username }
+        const user = await prisma.user.findFirst({
+          where: {
+            OR: [{ username }, { email: username }],
+          },
         });
 
-        if (!user) {
-          throw new Error("Username atau password salah");
-        }
+        if (!user) return null;
 
-        // kalau di DB password sudah hash
         const isValid = await bcrypt.compare(password, user.password);
-        if (!isValid) {
-          throw new Error("Username atau password salah");
-        }
+        if (!isValid) return null;
 
-        const role = user.role as Role;
+        const emailRole = resolveRoleFromEmail(user.email);
+        const role = emailRole ?? (user.role as Role) ?? "CUSTOMER";
 
         return {
           id: user.id,
-          name: user.name ?? user.username,
-          email: user.email,
+          name: user.name ?? undefined,
+          email: user.email ?? undefined,
+          image: user.image ?? undefined,
+          role,
           username: user.username,
-          role
         };
-      }
-    })
+      },
+    }),
   ],
-
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id = (user as any).id;
-        token.username = (user as any).username;
-        token.role = (user as any).role as Role;
+        token.sub = user.id;
+        token.role = (user as any).role ?? token.role ?? "CUSTOMER";
+        token.username = (user as any).username ?? token.username ?? null;
       }
+
+      if (!token.role) token.role = "CUSTOMER";
       return token;
     },
-
     async session({ session, token }) {
       if (session.user) {
-        (session.user as any).id = token.id as string;
-        (session.user as any).username = token.username as string;
-        (session.user as any).role = token.role as Role;
+        if (token.sub) session.user.id = token.sub;
+        session.user.role = (token as any).role ?? "CUSTOMER";
+        session.user.username = (token as any).username ?? null;
       }
       return session;
-    }
-  }
+    },
+  },
 });

@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { resolveImageSrc } from "@/lib/utils";
 
 type ProdukItem = {
   id: string;
@@ -183,9 +184,7 @@ export default function ProdukPage() {
           ) : (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {produks.map((produk) => {
-                const imageSrc = produk.image.startsWith("/")
-                  ? produk.image
-                  : `/${produk.image}`;
+                const imageSrc = resolveImageSrc(produk.image);
 
                 return (
                   <article

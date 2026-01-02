@@ -126,7 +126,7 @@ export default function produkTable({ initialproduks }: Props) {
               }
             />
             <span className="text-[11px] text-gray-500">
-              Format: JPG, PNG, dll. Disimpan di /public/uploads.
+              Format: JPG, PNG, dll. Disimpan di storage publik.
             </span>
           </div>
 

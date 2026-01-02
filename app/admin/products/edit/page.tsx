@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { resolveImageSrc } from "@/lib/utils";
 
 type ProdukItem = {
   id: string;
@@ -64,9 +65,7 @@ export default function EditProductPage() {
         }
 
         setProduk(found);
-        setPreview(
-          found.image.startsWith("/") ? found.image : `/${found.image}`
-        );
+        setPreview(resolveImageSrc(found.image));
       } catch (err) {
         console.error(err);
         if (err instanceof Error) {
@@ -95,7 +94,7 @@ export default function EditProductPage() {
 
     try {
       const res = await fetch(`/api/admin/produks/${id}`, {
-        method: "POST",
+        method: "PATCH",
         body: formData,
       });
 
@@ -105,7 +104,10 @@ export default function EditProductPage() {
       try {
         data = text ? JSON.parse(text) : null;
       } catch {
-        console.error("Response POST /api/admin/produks/[id] bukan JSON:", text);
+        console.error(
+          "Response PATCH /api/admin/produks/[id] bukan JSON:",
+          text
+        );
       }
 
       if (!res.ok) {
