@@ -3,8 +3,7 @@ import { PrismaClient } from "@prisma/client";
 const DISABLE_DB = process.env.DISABLE_DB === "1" || process.env.DISABLE_DB === "true";
 const hasDbUrl = !!process.env.DATABASE_URL;
 
-// Mock prisma minimal: supaya route/page yang manggil prisma tidak langsung crash.
-// Ia akan balikin data kosong ([]) atau null.
+// Mock prisma minimal: supaya route/page yang manggil prisma tidak crash saat DB dimatikan.
 function createMockPrisma() {
   const handler: ProxyHandler<any> = {
     get(_target, prop) {
@@ -18,17 +17,18 @@ function createMockPrisma() {
         {},
         {
           get(_t2, method) {
-            // default: semua query return aman
+            // query yang umum dipakai
             if (method === "findMany") return async () => [];
             if (method === "findUnique") return async () => null;
             if (method === "findFirst") return async () => null;
             if (method === "count") return async () => 0;
 
-            // create/update/delete: kasih object minimal agar tidak meledak
+            // create/update/delete: balikin object minimal agar tidak meledak
             if (method === "create" || method === "update" || method === "upsert")
               return async (args?: any) => ({ id: "mock", ...(args?.data ?? {}) });
             if (method === "delete") return async () => ({ id: "mock" });
 
+            // default fallback
             return async () => null;
           }
         }
@@ -41,13 +41,19 @@ function createMockPrisma() {
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
-let prisma: any;
+let prismaInstance: any;
 
 if (DISABLE_DB || !hasDbUrl) {
-  prisma = createMockPrisma();
+  prismaInstance = createMockPrisma();
 } else {
-  prisma = globalForPrisma.prisma || new PrismaClient();
-  if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+  prismaInstance = globalForPrisma.prisma || new PrismaClient();
+  if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prismaInstance;
 }
 
-export default prisma;
+/**
+ * ✅ Kompatibilitas:
+ * - Banyak file lama pakai: import { prisma } from "@/lib/prisma"
+ * - Sebagian bisa pakai: import prisma from "@/lib/prisma"
+ */
+export const prisma = prismaInstance;
+export default prismaInstance;
