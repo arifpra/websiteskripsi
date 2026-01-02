@@ -7,7 +7,7 @@ import { useActionState } from "react";
 import { Amenities } from "@prisma/client";
 import { BarLoader } from "react-spinners";
 import { updateproduk } from "@/lib/actions";
-import { produkProps } from "@/types/produk";
+import { produkProps } from "@/types/room";
 import clsx from "clsx";
 
 const EditForm = ({
