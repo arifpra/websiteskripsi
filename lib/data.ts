@@ -24,3 +24,15 @@ export const getprodukById = async (id: string) => {
     return null;
   }
 };
+
+export const getAmenities = async () => {
+  try {
+    if (!process.env.DATABASE_URL) return []; // fallback tanpa DB
+    return await prisma.amenities.findMany({
+      orderBy: { name: "asc" },
+    });
+  } catch (error) {
+    console.error("Error getAmenities:", error);
+    return [];
+  }
+};
