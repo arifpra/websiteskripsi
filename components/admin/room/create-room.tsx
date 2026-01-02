@@ -1,5 +1,5 @@
 import React from "react";
-import CreateForm from "@/components/admin/produk/create-form";
+import CreateForm from "@/components/admin/room/create-form";
 import { getAmenities } from "@/lib/data";
 
 const Createproduk = async () => {
@@ -8,7 +8,7 @@ const Createproduk = async () => {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-gray-800 mb-4">Create New produk</h1>
+      <h1 className="text-3xl font-bold text-gray-800 mb-4">Create New Produk</h1>
       <CreateForm amenities={amenities} />
     </div>
   );
