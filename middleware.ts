@@ -1,48 +1,106 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { getToken } from "next-auth/jwt";
 
 // route yang wajib login
-const ProtectedRoutes = ["/history-order", "/cart/checkout", "/checkout", "/admin", "/owner"];
+const PROTECTED_ROUTES = [
+  "/history-order",
+  "/cart/checkout",
+  "/checkout",
+  "/admin",
+  "/owner",
+];
+
+// helper: cek apakah path termasuk protected
+function isProtectedPath(pathname: string) {
+  return PROTECTED_ROUTES.some((route) => pathname.startsWith(route));
+}
 
 export async function middleware(request: NextRequest) {
-  const session = await auth();
-  const isLoggedIn = !!session?.user;
-  const role = (session?.user as any)?.role as "ADMIN" | "OWNER" | "CUSTOMER" | undefined;
-
   const { pathname, search } = request.nextUrl;
 
+  // Ambil token JWT tanpa memanggil auth() (ini ringan & edge-safe)
+  const token = await getToken({
+    req: request,
+    // Auth.js / NextAuth v5 biasanya pakai AUTH_SECRET
+    // kalau kamu pakai NEXTAUTH_SECRET, kamu bisa tambahkan env itu juga,
+    // tapi cukup AUTH_SECRET sesuai project-mu.
+    secret: process.env.AUTH_SECRET,
+  });
+
+  const isLoggedIn = !!token;
+  const role = (token?.role as "ADMIN" | "OWNER" | "CUSTOMER" | undefined) ?? undefined;
+
   // 1) WAJIB LOGIN untuk route tertentu
-  if (!isLoggedIn && ProtectedRoutes.some((route) => pathname.startsWith(route))) {
-    const signInUrl = new URL("/signin", request.url);
+  if (!isLoggedIn && isProtectedPath(pathname)) {
+    const signInUrl = request.nextUrl.clone();
+    signInUrl.pathname = "/signin";
     signInUrl.searchParams.set("callbackUrl", pathname + search);
     return NextResponse.redirect(signInUrl);
   }
 
   // 2) Role guard: Admin area
   if (isLoggedIn && pathname.startsWith("/admin") && role !== "ADMIN") {
-    // OWNER tidak boleh masuk admin (sesuai permintaan: owner hanya insight)
-    // Customer juga tidak boleh
-    if (role === "OWNER") return NextResponse.redirect(new URL("/owner", request.url));
-    return NextResponse.redirect(new URL("/", request.url));
+    // OWNER tidak boleh masuk admin (owner hanya insight)
+    if (role === "OWNER") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/owner";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    url.search = "";
+    return NextResponse.redirect(url);
   }
 
   // 3) Role guard: Owner area
   if (isLoggedIn && pathname.startsWith("/owner") && role !== "OWNER") {
     // admin/customer tidak boleh masuk owner
-    if (role === "ADMIN") return NextResponse.redirect(new URL("/admin", request.url));
-    return NextResponse.redirect(new URL("/", request.url));
+    if (role === "ADMIN") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/admin";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    url.search = "";
+    return NextResponse.redirect(url);
   }
 
   // 4) Kalau sudah login tapi buka /signin -> redirect sesuai role
   if (isLoggedIn && pathname.startsWith("/signin")) {
-    if (role === "ADMIN") return NextResponse.redirect(new URL("/admin", request.url));
-    if (role === "OWNER") return NextResponse.redirect(new URL("/owner", request.url));
-    return NextResponse.redirect(new URL("/", request.url));
+    const url = request.nextUrl.clone();
+    url.search = "";
+
+    if (role === "ADMIN") url.pathname = "/admin";
+    else if (role === "OWNER") url.pathname = "/owner";
+    else url.pathname = "/";
+
+    return NextResponse.redirect(url);
   }
 
   return NextResponse.next();
 }
 
+/**
+ * Matcher dibuat lebih "ketat" supaya middleware tidak jalan untuk semua route.
+ * Ini membantu performa & kadang ikut menekan ukuran output edge.
+ *
+ * Kita hanya perlu:
+ * - halaman signin
+ * - semua halaman protected routes
+ *
+ * Catatan: Next.js matcher tidak support array startsWith secara dinamis,
+ * jadi kita tulis pattern eksplisit.
+ */
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    "/signin",
+    "/history-order/:path*",
+    "/cart/checkout/:path*",
+    "/checkout/:path*",
+    "/admin/:path*",
+    "/owner/:path*",
+  ],
 };
