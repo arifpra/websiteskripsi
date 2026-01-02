@@ -74,7 +74,7 @@ export default function AdminOrdersPage() {
           return;
         }
 
-        setOrders(data as OrderItem[]);
+        setOrders(data as OrderItemRow[]);
       } catch (err) {
         console.error(err);
         setError(
