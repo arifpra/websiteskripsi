@@ -23,7 +23,7 @@ export default function ChatPage() {
     const trimmed = input.trim();
     if (!trimmed || loading) return;
 
-    const nextMessages = [
+    const nextMessages: ChatMessage[] = [
       ...messages,
       { role: "user", content: trimmed },
     ];
