@@ -1,10 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { IoPeopleOutline } from "react-icons/io5";
-import { produk } from "@prisma/client";
+import type { Produk } from "@prisma/client";
 import { formatCurrency } from "@/lib/utils";
 
-const Card = ({ produk }: { produk: produk }) => {
+const Card = ({ produk }: { produk: Produk }) => {
   return (
     <div className="km-tile rounded-sm transition duration-150 hover:shadow-lg">
       {/* image waraper */}

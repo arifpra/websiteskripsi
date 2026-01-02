@@ -1,14 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import type { produk } from "@prisma/client";
+import type { Produk } from "@prisma/client";
+
+type ProdukRow = Omit<Produk, "createdAt" | "updatedAt"> & {
+  createdAt: string | Date;
+  updatedAt: string | Date;
+};
 
 type Props = {
-  initialproduks: produk[];
+  initialproduks: ProdukRow[];
 };
 
 export default function produkTable({ initialproduks }: Props) {
-  const [produks, setproduks] = useState<produk[]>(initialproduks);
+  const [produks, setproduks] = useState<ProdukRow[]>(initialproduks);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState({
     name: "",
@@ -44,7 +49,7 @@ export default function produkTable({ initialproduks }: Props) {
         throw new Error(data.message || "Gagal menambahkan produk");
       }
 
-      const newproduk: produk = await res.json();
+      const newproduk: ProdukRow = await res.json();
       setproduks((prev) => [newproduk, ...prev]);
 
       // reset form
@@ -192,7 +197,7 @@ export default function produkTable({ initialproduks }: Props) {
                   </td>
                   <td className="px-4 py-2">{produk.capacity}</td>
                   <td className="px-4 py-2">
-                    {produk.createdAt.toLocaleDateString("id-ID")}
+                    {new Date(produk.createdAt).toLocaleDateString("id-ID")}
                   </td>
                 </tr>
               ))}
