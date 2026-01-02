@@ -33,7 +33,7 @@ const produkDetail = async ({ produkId }: { produkId: string }) => {
           {produk.produkAmenities.map((item) => (
             <div className="flex gap-1 py-1" key={item.id}>
               <IoCheckmark className="size-5" />
-              <span>{item.Amenities.name}</span>
+              <span>{item.amenities.name}</span>
             </div>
           ))}
         </div>

@@ -134,3 +134,44 @@ export const getReservationByUserId = async (userId: string) => {
     return [];
   }
 };
+
+export const getprodukDetailById = async (id: string) => {
+  try {
+    const produk = await prisma.produk.findUnique({
+      where: { id },
+      include: {
+        produkAmenities: {
+          include: {
+            amenities: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return produk;
+  } catch (err) {
+    console.error("Error getprodukDetailById:", err);
+    return null;
+  }
+};
+
+export const getReservationByprodukId = async (produkId: string) => {
+  try {
+    const reservations = await prisma.reservation.findMany({
+      where: { produkId },
+      select: {
+        starDate: true,
+        endDate: true,
+      },
+    });
+
+    return reservations;
+  } catch (err) {
+    console.error("Error getReservationByprodukId:", err);
+    return [];
+  }
+};
