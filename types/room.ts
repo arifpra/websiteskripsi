@@ -1,10 +1,10 @@
 import { Prisma } from "@prisma/client";
 
-export type produkProps = Prisma.produkGetPayload<{
+export type produkProps = Prisma.ProdukGetPayload<{
   include: { amenities: { select: { amenitiesId: true } } };
 }>;
 
-export type produkProps2 = Prisma.produkGetPayload<{
+export type produkProps2 = Prisma.ProdukGetPayload<{
   include: {
     amenities: {
       include: {
