@@ -43,8 +43,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(credentials) {
         if (!hasDbUrl) return null;
 
-        const username = credentials?.username?.trim();
-        const password = credentials?.password ?? "";
+        const rawUsername = credentials?.username;
+        const rawPassword = credentials?.password;
+        const username =
+          typeof rawUsername === "string" ? rawUsername.trim() : "";
+        const password = typeof rawPassword === "string" ? rawPassword : "";
 
         if (!username || !password) return null;
 
