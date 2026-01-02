@@ -1,6 +1,15 @@
 import Image from "next/image";
 
-export default function produkCard({ produk }) {
+type ProdukCardProps = {
+  produk: {
+    image: string;
+    name: string;
+    capacity: number;
+    price: number;
+  };
+};
+
+export default function produkCard({ produk }: ProdukCardProps) {
   return (
     <div className="km-tile rounded-lg overflow-hidden">
       <div className="relative w-full h-56">
