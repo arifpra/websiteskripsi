@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
 
 type CartResponse = {
@@ -66,6 +66,14 @@ export default function Navbar() {
 
     loadCartCount();
   }, [status, isAdminLike]);
+
+  const handleSignOut = async () => {
+    try {
+      await fetch("/api/logout", { method: "POST" });
+    } finally {
+      window.location.href = "/";
+    }
+  };
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
@@ -241,7 +249,7 @@ export default function Navbar() {
               {/* Sign in/out */}
               {session ? (
                 <button
-                  onClick={() => signOut({ callbackUrl: "/signin" })}
+                  onClick={handleSignOut}
                   className="inline-flex items-center justify-center rounded-full px-5 py-2 text-sm font-semibold
                              bg-km-brass text-white ring-1 ring-km-line hover:opacity-90 transition"
                 >

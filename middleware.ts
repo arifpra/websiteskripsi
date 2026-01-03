@@ -19,13 +19,11 @@ export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
   // Ambil token JWT tanpa memanggil auth() (ini ringan & edge-safe)
-  const token = await getToken({
-    req: request,
-    // Auth.js / NextAuth v5 biasanya pakai AUTH_SECRET
-    // kalau kamu pakai NEXTAUTH_SECRET, kamu bisa tambahkan env itu juga,
-    // tapi cukup AUTH_SECRET sesuai project-mu.
-    secret: process.env.AUTH_SECRET,
-  });
+  const authSecret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
+
+  const token = await getToken(
+    authSecret ? { req: request, secret: authSecret } : { req: request }
+  );
 
   const isLoggedIn = !!token;
   const role = (token?.role as "ADMIN" | "OWNER" | "CUSTOMER" | undefined) ?? undefined;

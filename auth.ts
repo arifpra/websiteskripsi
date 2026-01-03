@@ -27,12 +27,13 @@ function resolveRoleFromEmail(email?: string | null): Role | undefined {
 }
 
 const hasDbUrl = !!process.env.DATABASE_URL;
+const authSecret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: hasDbUrl ? PrismaAdapter(prisma) : undefined,
   session: { strategy: "jwt" },
   pages: { signIn: "/signin" },
-  secret: process.env.AUTH_SECRET,
+  secret: authSecret,
   providers: [
     Credentials({
       name: "Credentials",
