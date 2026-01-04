@@ -42,7 +42,15 @@ export const getprodukDetailById = async (id: string) => {
     if (!process.env.DATABASE_URL) return null; // fallback tanpa DB
     return await prisma.produk.findUnique({
       where: { id },
-      include: { amenities: { select: { amenitiesId: true } } },
+      include: {
+        amenities: {
+          include: {
+            amenities: {
+              select: { name: true },
+            },
+          },
+        },
+      },
     });
   } catch (error) {
     console.error("Error getprodukDetailById:", error);
