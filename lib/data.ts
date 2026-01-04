@@ -50,6 +50,19 @@ export const getprodukDetailById = async (id: string) => {
   }
 };
 
+export const getReservationByprodukId = async (produkId: string) => {
+  try {
+    if (!process.env.DATABASE_URL) return []; // fallback tanpa DB
+    return await prisma.reservation.findMany({
+      where: { produkId },
+      select: { starDate: true, endDate: true },
+    });
+  } catch (error) {
+    console.error("Error getReservationByprodukId:", error);
+    return [];
+  }
+};
+
 export const getReservationById = async (id: string) => {
   try {
     if (!process.env.DATABASE_URL) return null; // fallback tanpa DB
