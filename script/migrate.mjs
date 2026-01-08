@@ -33,15 +33,12 @@ function run(cmd, args) {
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
-console.log(`[startup] DISABLE_DB=${DISABLE_DB} DATABASE_URL=${hasDbUrl ? "set" : "missing"}`);
+console.log(`[migrate] DISABLE_DB=${DISABLE_DB} DATABASE_URL=${hasDbUrl ? "set" : "missing"}`);
 
 run("npx", ["prisma", "generate"]);
 
 if (!DISABLE_DB && hasDbUrl) {
-  // Hanya jalankan migrate deploy kalau DB dipakai
   run("npx", ["prisma", "migrate", "deploy"]);
 } else {
-  console.log("[startup] DB disabled -> skipping prisma migrate deploy");
+  console.log("[migrate] DB disabled or missing -> skipping prisma migrate deploy");
 }
-
-run("npx", ["next", "start"]);
